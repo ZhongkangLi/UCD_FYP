@@ -1,0 +1,599 @@
+<html>
+<head>
+		<title>My first three.js app</title>
+		<style>
+				body { margin: 0; }
+				canvas { display: block }
+		</style>
+</head>
+<body>
+<script src="libs/three.js"></script>
+<script src="libs/GLTFLoader.js"></script>
+<script src="http://www.yanhuangxueyuan.com/versions/threejsR92/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.bootcss.com/dat-gui/0.7.1/dat.gui.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>  <!-- 引入样式 -->
+	<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+	<!-- 引入组件库 -->
+	<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+	<script>
+		init();
+		var actions = [];
+		var actions1 = [];
+		window.AudioContext = window.AudioContext || window.webkitAudioContext;
+		var currentActionIndex = 0;
+		playList = [];
+		clips = [];
+		result = null;
+		mixer = null;
+		speedControls = null;
+		// folder = null;
+		play = null;
+		var singleActions = [];
+		var singleActions1 = [];
+		var loader = new THREE.GLTFLoader();
+		var gui= {
+			helper:true //模型辅助线
+		};
+		uniqName = 0;
+		audioBuffer = null;
+		word = null;
+		httpRequest = null;
+		playcontrol = null;
+		playcontrol1 = null;
+		speedControls = null;
+		speedControls1 = null;
+		scenecontrol = null;
+		scenecontrol1 = null;
+
+		var scene1, scene2;
+		var datGui = null;
+
+		m = new Map([[0, ["AH","HH","AA"]], [1, ["B", "P", "M"]], [2, ["EH"]],[3, ["EY"]], [4, ["ER"]],
+			[5, ["F", "V"]], [6, ["Y", "IH", "IY"]], [7, ["K", "G", "NG"]],
+			[8, ["N", "L"]], [9, ["AO"]], [10, ["S", "Z"]], [11, ["SH", "ZH", "CH", "JH"]], [12, ["T", "D"]], [13, ["UW", "UH", "W", "R"]], [14, ["AE"]], [15, ["DH", "TH"]]]);
+
+
+		loadScene1();
+
+		function loadScene1() {
+			var switchButton = 1;
+			datGui = new dat.GUI();
+			// input box
+			var inputBox = new function(){
+				this.input = " ";
+			};
+
+			var speed = new function () {
+				this.speed = 0.3;
+			};
+
+			var controls = datGui.add(inputBox, "input");
+
+			var cross_scene = new function () {
+				this.cross_scene = function () {
+					scene = scene2;
+					camera = camera2;
+					if (typeof(datGui)!='undefined') {
+						datGui.destroy();
+					}
+					loadScene2();
+					if (word != null) {
+						datGui.__controllers[0].object.input = word;
+						datGui.updateDisplay();
+					}
+				};
+			};
+
+			scenecontrol = datGui.add(cross_scene, 'cross_scene');
+			scenecontrol.name('cross section');
+
+			var folder = null;
+			var phoneme_folder = null;
+			loader.load('frontFace.glb', function (glf) {
+
+				glf.scene.position.set(270, -50, -100);
+				glf.scene.children[0].scale.set(400, 400, 400);
+				for (var i = 0; i<scene1.children.length ; i++){
+					if (scene1.children[i].type === 'Scene'){
+						scene1.remove(scene1.children[i]);
+					}
+				}
+				scene1.add(glf.scene);
+				// glf作为混合器的参数，可以播放obj包含的帧动画数据
+				mixer = new THREE.AnimationMixer(glf.scene);
+				mixer.timeScale = 0.3;
+				actions = [];
+				for (var i = 0; i < glf.animations.length; i++) {
+					var action = mixer.clipAction(glf.animations[i]);
+					action.loop = THREE.LoopOnce;
+					// action.clampWhenFinished = true;
+					actions.push(action);
+				}
+				console.log(actions);
+				phoneme_folder = datGui.addFolder('All phonemes');
+				for(var i=0; i<actions.length; i++){
+					createAction(i);
+				}
+				function createAction(i){
+					console.log(actions[i]._clip.name);
+					gui[actions[i]._clip.name] = function () {
+						switchButton = 0;
+						for(var j=0; j<actions.length; j++){
+							if(j === i){
+								actions[j].reset().play();
+							}
+							else{
+								actions[j].stop();
+							}
+						}
+					};
+					phoneme_folder.add(gui, actions[i]._clip.name);
+				}
+				function editPlayRange() {
+					if (clips.length !== 0) {
+						clips.length = 0;
+					}
+					var clip = THREE.AnimationUtils.subclip(glf.animations[playList[0]], uniqName, 0, 5);
+					clips.push(clip);
+					for (var i = 1; i < playList.length; i++) {
+						var clip = THREE.AnimationUtils.subclip(glf.animations[playList[i]], uniqName, 5, 10);
+						clips.push(clip);
+						uniqName++;
+					}
+					console.log(clips);
+					console.log("Edit Play Range...");
+					console.log("Finish!");
+				}
+
+				function playNextAction() {
+					if (switchButton === 1){
+						console.log(playList);
+						if (currentActionIndex === playList.length) {
+							currentActionIndex = 0;
+							return;
+						}
+						var action = mixer.clipAction(clips[currentActionIndex]);
+						mixer.timeScale = 0.4;
+						action.loop = THREE.LoopOnce;
+						action.reset().play();
+						currentActionIndex++;
+					}
+				}
+
+				function createPhonemesFolder(i, folder, value) {
+					if (playList.length > 0) {
+						singleActions[i] = mixer.clipAction(glf.animations[playList[i]]);
+						gui['phoneme ' + result[i]] = function () {
+							mixer.timeScale = value;
+							if (mixer._listeners != null){
+								mixer._listeners = [];
+							}
+							for (var j = 0; j < singleActions.length; j++) {
+								if (j === i) {
+									singleActions[i].loop = THREE.LoopOnce; //不循环播放
+									singleActions[i].reset().play();
+								} else {
+								}
+							}
+						};
+						folder.add(gui, 'phoneme ' + result[i]);
+					}
+				}
+
+				controls.onFinishChange(function (value) {
+
+					word = value;
+					httpRequest = new XMLHttpRequest();
+					httpRequest.open('GET', 'http://www.speech.cs.cmu.edu/cgi-bin/cmudict?in=' + value, true);
+					httpRequest.setRequestHeader("Access-Control-Allow-Origin", "*");
+					httpRequest.send();
+
+
+					var context = new AudioContext();
+					var httpRequest_audio = new XMLHttpRequest();
+					httpRequest_audio.open('GET', 'https://fanyi.baidu.com/gettts?lan=en&text=' + value + '&spd=1&source=web', true);
+					httpRequest_audio.responseType = 'arraybuffer';
+					httpRequest_audio.onload = function () {
+						context.decodeAudioData(httpRequest_audio.response, function (buffer) {
+							audioBuffer = buffer;
+							console.log("Audio is prepared!");
+						});
+					};
+					httpRequest_audio.send();
+
+					httpRequest.onreadystatechange = function () {
+						if (httpRequest.readyState == 4 && httpRequest.status == 200) {
+							var json = httpRequest.responseText;//获取到json字符串，还需解析
+							var obj = JSON.stringify(json);
+							var html = eval("(" + obj + ")");
+							var line = html.split("\n")[37];
+							var start = line.lastIndexOf("\<tt\>");
+							var tail = line.lastIndexOf("tt");
+							result = line.substr(start + 4, tail - start - 8).split(" ");
+
+							if (playList.length !== 0) {
+								playList.length = 0;
+							}
+							for (var i = 0; i < result.length; i++) {
+								m.forEach(function (value, key, map) {
+									if (map.get(key).indexOf(result[i]) > -1) {
+										playList.push(key);
+									}
+								});
+								if (result[i] === 'AW') {
+									playList.push(14);
+									playList.push(13);
+								} else if (result[i] === 'AY') {
+									playList.push(0);
+									playList.push(6);
+								} else if (result[i] === 'OW') {
+									playList.push(9);
+									playList.push(13);
+								} else if (result[i] === 'OY') {
+									playList.push(9);
+									playList.push(6);
+								}
+							}
+						}
+						if (result != null) {
+
+							if (folder == null) {
+								var play = new function () {
+									this.play = function () {
+										switchButton = 1;
+										console.log('scene 1');
+										mixer.addEventListener('finished', playNextAction);
+										mixer.timeScale = 0.9;
+										playSound(audioBuffer);
+										editPlayRange();
+										playNextAction();
+									};
+								};
+
+								playcontrol = datGui.add(play, 'play');
+								playcontrol.name('Play');
+
+								folder = datGui.addFolder(result);
+								speedControls = datGui.add(speed, 'speed', 0, 1.0);
+								speedControls.name('Play Speed');
+
+								speedControls.onFinishChange(function (value) {
+									datGui.removeFolder(folder);
+									folder = datGui.addFolder(result);
+									for (var i = 0; i < playList.length; i++) {
+										createPhonemesFolder(i, folder, value);
+									}
+								});
+								for (var i = 0; i < playList.length; i++) {
+									createPhonemesFolder(i, folder, 0.3);
+								}
+							} else {
+								datGui.removeFolder(folder);
+								folder = datGui.addFolder(result);
+								for (var i = 0; i < playList.length; i++) {
+									createPhonemesFolder(i, folder, 0.3);
+								}
+							}
+						}
+					};
+					httpRequest_audio.onreadystatechange = function () {
+						if (httpRequest_audio.readyState == 4 && httpRequest_audio.status == 200) {
+						}
+					};
+				});
+
+
+			});
+		}
+
+		//Set scene 1
+		scene1 = new THREE.Scene();
+		scene1.background = new THREE.Color( 0xb9d3ff );
+
+
+		var point1 = new THREE.PointLight( 0xffffff );
+		point1.position.set( 500, 200, 300 );
+		point1.intensity = 0.8;
+		scene1.add( point1 );
+
+		var ambient = new THREE.AmbientLight( 0x999999 );
+		scene1.add( ambient );
+
+		//Window
+		var width = window.innerWidth; //窗口宽度
+		var height = window.innerHeight; //窗口高度
+		var k = width / height; //窗口宽高比
+		var s = 200; //三维场景缩放系数
+		//创建相机对象
+		var camera1 = new THREE.OrthographicCamera( - s * k, s * k, s, - s, 1, 1000 );
+		camera1.position.set( 100, 20, 200 ); //设置相机位置
+		camera1.lookAt( scene1.position ); //设置相机方向(指向的场景对象)
+
+		/**
+		 * 创建渲染器对象
+		 */
+		var renderer = new THREE.WebGLRenderer( {
+			antialias: true
+		} );
+		renderer.setPixelRatio( window.devicePixelRatio );
+		renderer.setSize( width, height );
+		document.body.appendChild( renderer.domElement );
+
+		var clock = new THREE.Clock();
+
+		function loadScene2() {
+			datGui = new dat.GUI();
+			// input box
+			var inputBox = new function(){
+				this.input = " ";
+			};
+
+			var speed = new function () {
+				this.speed = 0.3;
+			};
+			var controls = datGui.add(inputBox, "input");
+			var cross_scene = new function () {
+				this.cross_scene = function () {
+					scene = scene1;
+					camera = camera1;
+					if (typeof(datGui)!='undefined') {
+						datGui.destroy();
+					}
+					loadScene1();
+					if (word != null) {
+						datGui.__controllers[0].object.input = word;
+						datGui.updateDisplay();
+					}
+				};
+			};
+
+			scenecontrol1 = datGui.add(cross_scene, 'cross_scene');
+			scenecontrol1.name('cross section');
+
+			var folder = null;
+
+			loader.load('crossSection.glb', function (glf) {
+				var switchButton = 1;
+				glf.scene.position.set(270, -50, -100);
+				glf.scene.children[0].scale.set(400, 400, 400);
+				for (var i = 0; i<scene2.children.length ; i++){
+					if (scene2.children[i].type === 'Scene'){
+						scene2.remove(scene2.children[i]);
+					}
+				}
+				scene2.add(glf.scene);
+				// glf作为混合器的参数，可以播放obj包含的帧动画数据
+				mixer = new THREE.AnimationMixer(glf.scene);
+				mixer.timeScale = 0.4;
+
+				actions1 = [];
+				for (var i = 0; i < 16; i++) {
+					var action = mixer.clipAction(glf.animations[i]);
+					action.loop = THREE.LoopOnce;
+					// action.clampWhenFinished = true;
+					actions1.push(action);
+
+				}
+
+				function editPlayRange() {
+					if (clips.length !== 0) {
+						clips.length = 0;
+					}
+					var clip = THREE.AnimationUtils.subclip(glf.animations[playList[0]], uniqName, 0, 6);
+					clips.push(clip);
+					for (var i = 1; i < playList.length; i++) {
+						var clip = THREE.AnimationUtils.subclip(glf.animations[playList[i]], uniqName, 5, 8);
+						clips.push(clip);
+						uniqName++;
+					}
+					console.log("Edit Play Range...");
+					console.log("Finish!");
+				}
+
+				function playNextAction() {
+					if (switchButton === 1){
+						console.log(playList);
+						if (currentActionIndex === playList.length) {
+							currentActionIndex = 0;
+							return;
+						}
+						var action = mixer.clipAction(clips[currentActionIndex]);
+						mixer.timeScale = 0.4;
+						action.loop = THREE.LoopOnce;
+						action.reset().play();
+						currentActionIndex++;
+					}
+				}
+
+				function createPhonemesFolder(i, folder, value) {
+					if (playList.length > 0) {
+						singleActions1[i] = mixer.clipAction(glf.animations[playList[i]]);
+						gui['phoneme ' + result[i]] = function () {
+							console.log('scene2 phoneme');
+							mixer.timeScale = value;
+							if (mixer._listeners != null){
+								mixer._listeners = [];
+							}
+							for (var j = 0; j < singleActions1.length; j++) {
+								if (j === i) {
+									singleActions1[i].loop = THREE.LoopOnce; //不循环播放
+									singleActions1[i].reset().play();
+								} else {
+								}
+							}
+						};
+						folder.add(gui, 'phoneme ' + result[i]);
+					}
+				}
+
+				controls.onFinishChange(function (value) {
+
+					word = value;
+					httpRequest = new XMLHttpRequest();
+					httpRequest.open('GET', 'http://www.speech.cs.cmu.edu/cgi-bin/cmudict?in=' + value, true);
+					httpRequest.setRequestHeader("Access-Control-Allow-Origin", "*");
+					httpRequest.send();
+
+
+					var context = new AudioContext();
+					var httpRequest_audio = new XMLHttpRequest();
+					httpRequest_audio.open('GET', 'https://fanyi.baidu.com/gettts?lan=en&text=' + value + '&spd=1&source=web', true);
+					httpRequest_audio.responseType = 'arraybuffer';
+					httpRequest_audio.onload = function () {
+						context.decodeAudioData(httpRequest_audio.response, function (buffer) {
+							audioBuffer = buffer;
+						});
+					};
+					httpRequest_audio.send();
+
+					httpRequest.onreadystatechange = function () {
+						if (httpRequest.readyState == 4 && httpRequest.status == 200) {
+							var json = httpRequest.responseText;// get JSON string
+							var obj = JSON.stringify(json);
+							var html = eval("(" + obj + ")");
+							var line = html.split("\n")[37];
+							var start = line.lastIndexOf("\<tt\>");
+							var tail = line.lastIndexOf("tt");
+							result = line.substr(start + 4, tail - start - 8).split(" ");
+
+							if (playList.length !== 0) {
+								playList.length = 0;
+							}
+							for (var i = 0; i < result.length; i++) {
+								m.forEach(function (value, key, map) {
+									if (map.get(key).indexOf(result[i]) > -1) {
+										playList.push(key);
+									}
+								});
+								if (result[i] === 'AW') {
+									playList.push(14);
+									playList.push(13);
+								} else if (result[i] === 'AY') {
+									playList.push(0);
+									playList.push(6);
+								} else if (result[i] === 'OW') {
+									playList.push(9);
+									playList.push(13);
+								} else if (result[i] === 'OY') {
+									playList.push(9);
+									playList.push(6);
+								}
+							}
+						}
+						if (result != null) {
+
+							if (folder == null ) {
+								var play = new function () {
+									this.play = function () {
+										switchButton = 1;
+										console.log('scene 2');
+										mixer.addEventListener('finished', playNextAction);
+										mixer.timeScale = 0.9;
+										playSound(audioBuffer);
+										editPlayRange();
+										playNextAction();
+									};
+								};
+
+								playcontrol1 = datGui.add(play, 'play');
+								playcontrol1.name('Play');
+
+								folder = datGui.addFolder(result);
+								speedControls1 = datGui.add(speed, 'speed', 0, 1.0);
+								speedControls1.name('Play Speed');
+
+								speedControls1.onFinishChange(function (value) {
+									datGui.removeFolder(folder);
+									folder = datGui.addFolder(result);
+									for (var i = 0; i < playList.length; i++) {
+										createPhonemesFolder(i, folder, value);
+									}
+								});
+								for (var i = 0; i < playList.length; i++) {
+									createPhonemesFolder(i, folder, 0.3);
+								}
+							} else {
+								datGui.removeFolder(folder);
+								folder = datGui.addFolder(result);
+								for (var i = 0; i < playList.length; i++) {
+									createPhonemesFolder(i, folder, 0.3);
+								}
+							}
+						}
+					};
+					httpRequest_audio.onreadystatechange = function () {
+						if (httpRequest_audio.readyState == 4 && httpRequest_audio.status == 200) {
+						}
+					};
+				});
+
+
+			});
+		}
+
+		//Set scene 2
+		scene2 = new THREE.Scene();
+		scene2.background = new THREE.Color( 0xb9d3ff );
+
+
+		var point2 = new THREE.PointLight( 0xffffff );
+		point2.position.set( 500, 200, 300 );
+		point2.intensity = 0.6;
+		scene2.add( point2 );
+
+		var ambient2 = new THREE.AmbientLight( 0x999999 );
+		scene2.add( ambient2 );
+
+		//Window
+		var width2 = window.innerWidth; //窗口宽度
+		var height2 = window.innerHeight; //窗口高度
+		var k2 = width2 / height2; //窗口宽高比
+		var s2 = 200; //三维场景缩放系数
+		//创建相机对象
+		var camera2 = new THREE.OrthographicCamera( - s2 * k2, s2 * k2, s2, - s2, 1, 1000 );
+		camera2.position.set( 300, -40, 0 ); //设置相机位置
+		camera2.lookAt( scene2.position ); //设置相机方向(指向的场景对象)
+
+		//default scene
+		scene = scene1;
+		camera = camera1;
+
+		function render() {
+
+			renderer.render( scene, camera );
+			requestAnimationFrame( render );
+
+			if ( mixer !== null ) {
+
+				mixer.update( clock.getDelta() );
+
+			}
+		}
+
+		render();
+
+		var context;
+		window.addEventListener('load', init, false);
+		function init() {
+			try {
+				// Fix up for prefixing
+				window.AudioContext = window.AudioContext||window.webkitAudioContext;
+				context = new AudioContext();
+			}
+			catch(e) {
+				alert('Web Audio API is not supported in this browser');
+			}
+		}
+
+		function playSound(buffer) {
+			var source = context.createBufferSource(); // creates a sound source
+			source.buffer = buffer;                    // tell the source which sound to play
+			source.connect(context.destination);       // connect the source to the context's destination (the speakers)
+			source.start(0);                           // play the source now
+													   // note: on older systems, may have to use deprecated noteOn(time);
+		}
+		// var viewControls = new THREE.OrbitControls(camera,renderer.domElement);
+		// viewControls.addEventListener('change', render);
+</script>
+</body>
+</html>
