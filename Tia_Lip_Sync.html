@@ -1,6 +1,8 @@
-<html>
-<head>
-		<title>My first three.js app</title>
+<!DOCTYPE html>
+<html lang="en">
+<head >
+
+		<title>Tia Lip Sync</title>
 		<style>
 				body { margin: 0; }
 				canvas { display: block }
@@ -9,12 +11,7 @@
 <body>
 <script src="libs/three.js"></script>
 <script src="libs/GLTFLoader.js"></script>
-<script src="http://www.yanhuangxueyuan.com/versions/threejsR92/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.bootcss.com/dat-gui/0.7.1/dat.gui.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>  <!-- 引入样式 -->
-	<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
-	<!-- 引入组件库 -->
-	<script src="https://unpkg.com/element-ui/lib/index.js"></script>
 	<script>
 		init();
 		var actions = [];
@@ -89,7 +86,7 @@
 
 			var folder = null;
 			var phoneme_folder = null;
-			loader.load('frontFace.glb', function (glf) {
+			loader.load('glb/frontFace.glb', function (glf) {
 
 				glf.scene.position.set(270, -50, -100);
 				glf.scene.children[0].scale.set(400, 400, 400);
@@ -352,7 +349,7 @@
 
 			var folder = null;
 
-			loader.load('crossSection.glb', function (glf) {
+			loader.load('glb/crossSection.glb', function (glf) {
 				var switchButton = 1;
 				glf.scene.position.set(270, -50, -100);
 				glf.scene.children[0].scale.set(400, 400, 400);
