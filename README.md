@@ -21,13 +21,15 @@ You click the 'play' button to check the pronunciation of the word. In the folde
 
 #### Important Note
 For your better experience, please use a browser allowing CORS (Access-Control-Allow-Origin).
-Before you open the project, please implement the operations below.
-~~~~ 
-Safari
+For Safari
+~~~~
 Development -> Disable Cross-Origin Restrictions
 ~~~~
-
-
+For chrome
+~~~~
+please refer to https://chrome.google.com/webstore/detail/cross-domain-cors/mjhpgnbimicffchbodmgfnemoghjakai/related
+Add the Cross Domain application to enable CORS
+~~~~
 
 
 
