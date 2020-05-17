@@ -27,9 +27,9 @@ Development -> Disable Cross-Origin Restrictions
 ~~~~
 For chrome
 ~~~~
-please refer to https://chrome.google.com/webstore/detail/cross-domain-cors/mjhpgnbimicffchbodmgfnemoghjakai/related
-Add the Cross Domain application to enable CORS
-~~~~
+please go to https://chrome.google.com/webstore/detail/cross-domain-cors/mjhpgnbimicffchbodmgfnemoghjakai/related
+This is an app called Cross Domain, which can help users to enable CORS on Chrome.
+~~~~ 
 
 
 
